@@ -1,0 +1,5 @@
+#!/bin/sh
+iio_fm_radio $1 | aplay -r 48000 -f S16
+
+# For playback on the ADAU1761 on the ZED board
+#iio_fm_radio $1 | aplay -D default:CARD=ADAU1761 -r 48000 -f S16
