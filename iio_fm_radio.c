@@ -108,9 +108,9 @@ static int demodulate(struct iio_buffer_block *block)
 			sample -= (max - min) / 2;
 			sample = sample * 0x1fff / (max - min);
 			if (sample > 0x1fff)
-				sample = 0x7fff;
-			else if(sample < -0x8000)
-				sample = -0x8000;
+				sample = 0x1fff;
+			else if(sample < -0x1fff)
+				sample = -0x1fff;
 
 			sample_buffer[n] = sample;	
 			n++;
