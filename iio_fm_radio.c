@@ -62,6 +62,8 @@ static int demodulate(struct iio_buffer_block *block)
 	unsigned int x = 0;
 	unsigned int n = 0;
 	short *sample_buffer;
+	size_t num_bytes, offset;
+	int ret;
 
 	new_min = 0xfffffff;
 	new_max = -0xfffffff;
@@ -118,8 +120,28 @@ static int demodulate(struct iio_buffer_block *block)
 		}
 	}
 
-	write(1, sample_buffer, 2 * n);
+	num_bytes = 2 * n;
+	offset = 0;
+
+	do {
+		ret = write(STDOUT_FILENO, sample_buffer + offset, num_bytes);
+		if (ret <= 0)
+			break;
+		num_bytes -= ret;
+		offset += ret;
+	} while (num_bytes);
+		
 	free(sample_buffer);
+
+	if (ret == 0) {
+		fprintf(stderr, "Failed to write samples to stdout: EOF\n");
+		return -1;
+	}
+
+	if (ret == -1) {
+		perror("Failed to write samples to stdout");
+		return -1;
+	}
 
 	min = new_min;
 	max = new_max;
@@ -230,8 +252,18 @@ int main(int argc, char *argv[])
 
 	while (app_running) {
 		ret = ioctl(fd, IIO_BLOCK_DEQUEUE_IOCTL, &block);
-		demodulate(&block);
+		if (ret) {
+			perror("Failed to dequeue block");
+			break;
+		}
+		ret = demodulate(&block);
+		if (ret)
+			break;
 		ret = ioctl(fd, IIO_BLOCK_ENQUEUE_IOCTL, &block);
+		if (ret) {
+			perror("Failed to enqueue block");
+			break;
+		}
 	}
 
 	write_devattr_int("buffer/enable", 0);
