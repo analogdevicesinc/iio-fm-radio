@@ -120,6 +120,12 @@ static int demodulate(struct iio_buffer_block *block)
 		}
 	}
 
+	min = new_min;
+	max = new_max;
+
+	if (n == 0)
+		return 0;
+
 	num_bytes = 2 * n;
 	offset = 0;
 
@@ -142,9 +148,6 @@ static int demodulate(struct iio_buffer_block *block)
 		perror("Failed to write samples to stdout");
 		return -1;
 	}
-
-	min = new_min;
-	max = new_max;
 
 	return 0;
 }
@@ -219,6 +222,10 @@ int main(int argc, char *argv[])
 
 	/* Allocate and mmap buffer blocks */
 	ret = ioctl(fd, IIO_BLOCK_ALLOC_IOCTL, &req);
+	if (ret < 0) {
+		perror("Failed to allocate memory blocks");
+		exit(1);
+	}
 	for (i = 0; i < req.count; i++) {
 		blocks[i].block.id = i;
 		ret = ioctl(fd, IIO_BLOCK_QUERY_IOCTL, &blocks[i].block);
