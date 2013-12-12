@@ -23,21 +23,21 @@
 #define IIO_BLOCK_DEQUEUE_IOCTL _IOWR('i', 0xa4, struct iio_buffer_block)
 
 struct iio_buffer_block_alloc_req {
-    __u32 type;
-    __u32 size;
-    __u32 count;
+	__u32 type;
+	__u32 size;
+	__u32 count;
 	__u32 id;
 };
 
 struct iio_buffer_block {
-    __u32 id;
-    __u32 size;
-    __u32 bytes_used;
-    __u32 type;
+	__u32 id;
+	__u32 size;
+	__u32 bytes_used;
+	__u32 type;
 	__u32 flags;
-    union {
-        __u32 offset;
-    } data;
+	union {
+		__u32 offset;
+	} data;
 	__u64 timestamp;
 };
 
@@ -189,14 +189,14 @@ int main(int argc, char *argv[])
 
 	ret = set_dev_paths("cf-ad9361-lpc");
 	if (ret < 0) {
-	    perror("Failed to find 'cf-ad9361-lpc' device");
-	    exit(1);
+		perror("Failed to find 'cf-ad9361-lpc' device");
+		exit(1);
 	}
 
 	fd = iio_buffer_open(true, O_RDWR);
 	if (fd < 0) {
-	    perror("Failed to open the device buffer");
-	    exit(1);
+		perror("Failed to open the device buffer");
+		exit(1);
 	}
 
 	/* Select I and Q data of the first channel */
@@ -230,8 +230,8 @@ int main(int argc, char *argv[])
 		blocks[i].block.id = i;
 		ret = ioctl(fd, IIO_BLOCK_QUERY_IOCTL, &blocks[i].block);
 		if (ret) {
-		    perror("Failed to query block");
-		    exit(1);
+			perror("Failed to query block");
+			exit(1);
 		}
 
 		blocks[i].addr = mmap(0, blocks[i].block.size, PROT_READ,
@@ -243,13 +243,13 @@ int main(int argc, char *argv[])
 
 		ret = ioctl(fd, IIO_BLOCK_ENQUEUE_IOCTL, &blocks[i].block);
 		if (ret) {
-		    perror("Failed to enqueue block");
-		    exit(1);
+			perror("Failed to enqueue block");
+			exit(1);
 		}
 
 		fprintf(stderr, "Sucessfully mapped block %d (offset %x, size %d) at %p\n",
-		    i, blocks[i].block.data.offset, blocks[i].block.size,
-		    blocks[i].addr);
+			i, blocks[i].block.data.offset, blocks[i].block.size,
+			blocks[i].addr);
 	}
 
 	fprintf(stderr, "Starting FM modulation\n");
