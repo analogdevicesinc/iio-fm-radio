@@ -1,9 +1,10 @@
 DESTDIR=/usr/local
 CFLAGS=-Wall -Werror -std=gnu99 -D_GNU_SOURCE -O2
+LDFLAGS=-liio
 
 all: iio_fm_radio
 
-iio_fm_radio: iio_fm_radio.c iio_utils.c
+iio_fm_radio: iio_fm_radio.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -o $@
 
 install:

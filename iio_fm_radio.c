@@ -14,45 +14,23 @@
 #include <linux/types.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
-#include "iio_utils.h"
 
-#define IIO_BLOCK_ALLOC_IOCTL   _IOWR('i', 0xa0, struct iio_buffer_block_alloc_req)
-#define IIO_BLOCK_FREE_IOCTL    _IO('i', 0xa1)
-#define IIO_BLOCK_QUERY_IOCTL   _IOWR('i', 0xa2, struct iio_buffer_block)
-#define IIO_BLOCK_ENQUEUE_IOCTL _IOWR('i', 0xa3, struct iio_buffer_block)
-#define IIO_BLOCK_DEQUEUE_IOCTL _IOWR('i', 0xa4, struct iio_buffer_block)
+#include <iio.h>
 
-struct iio_buffer_block_alloc_req {
-	__u32 type;
-	__u32 size;
-	__u32 count;
-	__u32 id;
-};
-
-struct iio_buffer_block {
-	__u32 id;
-	__u32 size;
-	__u32 bytes_used;
-	__u32 type;
-	__u32 flags;
-	union {
-		__u32 offset;
-	} data;
-	__u64 timestamp;
-};
-
-struct block {
-	struct iio_buffer_block block;
-	short *addr;
-};
-
-static struct block blocks[5];
+#define SAMPLES_COUNT 4000
 
 /* Min and max are used for automatic gain control and DC offset control */
 static int min = 0xfffffff;
 static int max = -0xfffffff;
 
-static int demodulate(struct iio_buffer_block *block)
+
+static size_t bytes_used(const struct iio_buffer *buf)
+{
+	return iio_buffer_end(buf) - iio_buffer_start(buf);
+}
+
+
+static int demodulate(struct iio_buffer *buf)
 {
 	int new_min, new_max;
 	long i[3], q[3], di, dq;
@@ -61,28 +39,28 @@ static int demodulate(struct iio_buffer_block *block)
 	unsigned int sub = 4;
 	unsigned int x = 0;
 	unsigned int n = 0;
-	short *sample_buffer;
-	size_t num_bytes, offset;
+	short *sample_buffer, *buffer = iio_buffer_start(buf);
+	size_t offset, num_bytes = bytes_used(buf);
 	int ret;
 
 	new_min = 0xfffffff;
 	new_max = -0xfffffff;
 
-	sample_buffer = malloc(block->bytes_used / 64);
+	sample_buffer = malloc(num_bytes / 64);
 
-	i[2] = blocks[block->id].addr[0];
-	q[2] = blocks[block->id].addr[1];
-	i[1] = blocks[block->id].addr[2];
-	q[1] = blocks[block->id].addr[3];
+	i[2] = buffer[0];
+	q[2] = buffer[1];
+	i[1] = buffer[2];
+	q[1] = buffer[3];
 
 	x = 0;
-	for (j = 2; j < block->bytes_used / 2; j += 2 * sub) {
+	for (j = 2; j < num_bytes / 2; j += 2 * sub) {
 
 		/* FM demodulation implemented as described in
 		 * http://www.embedded.com/design/embedded/4212086/DSP-Tricks--Frequency-demodulation-algorithms-
 		 */
-		i[0] = blocks[block->id].addr[j];
-		q[0] = blocks[block->id].addr[j + 1];
+		i[0] = buffer[j];
+		q[0] = buffer[j + 1];
 
 		di = i[0] - i[2];
 		dq = q[0] - q[2];
@@ -114,7 +92,7 @@ static int demodulate(struct iio_buffer_block *block)
 			else if(sample < -0x1fff)
 				sample = -0x1fff;
 
-			sample_buffer[n] = sample;	
+			sample_buffer[n] = sample;
 			n++;
 			sample = 0;
 		}
@@ -136,7 +114,7 @@ static int demodulate(struct iio_buffer_block *block)
 		num_bytes -= ret;
 		offset += ret;
 	} while (num_bytes);
-		
+
 	free(sample_buffer);
 
 	if (ret == 0) {
@@ -172,116 +150,75 @@ static void setup_sigterm_handler(void)
 }
 
 /**
- * Usage: `iio_fm_radio [frequency]`
+ * Usage: `iio_fm_radio [frequency] [hostname]`
  */
 int main(int argc, char *argv[])
 {
-	struct iio_buffer_block_alloc_req req;
-	struct iio_buffer_block block;
-	int fd, ret;
-	int i;
+	struct iio_context *ctx;
+	struct iio_device *dev, *phy;
+	struct iio_channel *chn;
+	struct iio_buffer *buf;
 
 	setup_sigterm_handler();
 
-	req.type = 0x0;
-	req.size = 0x100000;
-	req.count = 4;
+	if (argc > 2)
+		ctx = iio_create_network_context(argv[2]);
+	else
+		ctx = iio_create_local_context();
 
-	ret = set_dev_paths("cf-ad9361-lpc");
-	if (ret < 0) {
-		perror("Failed to find 'cf-ad9361-lpc' device");
-		exit(1);
-	}
+	if (!ctx)
+		return EXIT_FAILURE;
 
-	fd = iio_buffer_open(true, O_RDWR);
-	if (fd < 0) {
-		perror("Failed to open the device buffer");
-		exit(1);
+	dev = iio_context_find_device(ctx, "cf-ad9361-lpc");
+	phy = iio_context_find_device(ctx, "ad9361-phy");
+	if (!dev || !phy) {
+		fprintf(stderr, "Failed to find 'cf-ad9361-lpc' device\n");
+		iio_context_destroy(ctx);
+		return EXIT_FAILURE;
 	}
 
 	/* Select I and Q data of the first channel */
-	write_devattr_int("scan_elements/in_voltage0_en", 1);
-	write_devattr_int("scan_elements/in_voltage1_en", 1);
-	write_devattr_int("scan_elements/in_voltage2_en", 0);
-	write_devattr_int("scan_elements/in_voltage3_en", 0);
+	iio_channel_enable(iio_device_find_channel(dev, "voltage0", false));
+	iio_channel_enable(iio_device_find_channel(dev, "voltage1", false));
+	iio_channel_disable(iio_device_find_channel(dev, "voltage2", false));
+	iio_channel_disable(iio_device_find_channel(dev, "voltage3", false));
 
-	/* Setup the phy */
-	set_dev_paths("ad9361-phy");
+	chn = iio_device_find_channel(phy, "voltage0", false);
+
 	/* 32x oversampling for 48kHz audio */
-	write_devattr_int("in_voltage_sampling_frequency", 1536000);
+	iio_channel_attr_write_longlong(chn, "sampling_frequency", 1536000);
+
 	/* Set bandwidth to 300 kHz */
-	write_devattr_int("in_voltage_rf_bandwidth", 300000);
+	iio_channel_attr_write_longlong(chn, "rf_baudwidth", 30000);
 
 	if (argc > 1) {
 		float freq;
 		freq = atof(argv[1]);
 		if (freq < 1000)
 			freq *= 1000000;
-		write_devattr_int("out_altvoltage0_RX_LO_frequency", freq);
+		chn = iio_device_find_channel(phy, "altvoltage0", true);
+		iio_channel_attr_write_longlong(chn,
+				"frequency", (long long) freq);
 	}
 
-	/* Allocate and mmap buffer blocks */
-	ret = ioctl(fd, IIO_BLOCK_ALLOC_IOCTL, &req);
-	if (ret < 0) {
-		perror("Failed to allocate memory blocks");
-		exit(1);
-	}
-	for (i = 0; i < req.count; i++) {
-		blocks[i].block.id = i;
-		ret = ioctl(fd, IIO_BLOCK_QUERY_IOCTL, &blocks[i].block);
-		if (ret) {
-			perror("Failed to query block");
-			exit(1);
-		}
-
-		blocks[i].addr = mmap(0, blocks[i].block.size, PROT_READ,
-			MAP_SHARED, fd, blocks[i].block.data.offset);
-		if (blocks[i].addr == MAP_FAILED) {
-			perror("Failed to mmap block");
-			exit(1);
-		}
-
-		ret = ioctl(fd, IIO_BLOCK_ENQUEUE_IOCTL, &blocks[i].block);
-		if (ret) {
-			perror("Failed to enqueue block");
-			exit(1);
-		}
-
-		fprintf(stderr, "Sucessfully mapped block %d (offset %x, size %d) at %p\n",
-			i, blocks[i].block.data.offset, blocks[i].block.size,
-			blocks[i].addr);
+	buf = iio_device_create_buffer(dev, SAMPLES_COUNT);
+	if (!buf) {
+		perror("Unable to open device");
+		iio_context_destroy(ctx);
+		return EXIT_FAILURE;
 	}
 
 	fprintf(stderr, "Starting FM modulation\n");
 
-	set_dev_paths("cf-ad9361-lpc");
-	write_devattr_int("buffer/enable", 1);
-
 	while (app_running) {
-		ret = ioctl(fd, IIO_BLOCK_DEQUEUE_IOCTL, &block);
-		if (ret) {
-			perror("Failed to dequeue block");
+		iio_buffer_refill(buf);
+		if (demodulate(buf))
 			break;
-		}
-		ret = demodulate(&block);
-		if (ret)
-			break;
-		ret = ioctl(fd, IIO_BLOCK_ENQUEUE_IOCTL, &block);
-		if (ret) {
-			perror("Failed to enqueue block");
-			break;
-		}
 	}
-
-	write_devattr_int("buffer/enable", 0);
 
 	fprintf(stderr, "Stopping FM modulation\n");
 
-	for (i = 0; i < req.count; i++)
-		munmap(blocks[i].addr, blocks[i].block.size);	
-
-	ioctl(fd, IIO_BLOCK_FREE_IOCTL, 0);
-	close(fd);
-
-	return 0;
+	iio_buffer_destroy(buf);
+	iio_context_destroy(ctx);
+	return EXIT_SUCCESS;
 }
