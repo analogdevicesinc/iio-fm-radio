@@ -17,11 +17,19 @@
 
 #include <iio.h>
 
-#define SAMPLES_COUNT 4000
+#include <pulse/simple.h>
+
+#define SAMPLES_COUNT 16384
 
 /* Min and max are used for automatic gain control and DC offset control */
 static int min = 0xfffffff;
 static int max = -0xfffffff;
+
+static const pa_sample_spec sample_spec = {
+	.format = PA_SAMPLE_S16LE,
+	.rate = 48000,
+	.channels = 1,
+};
 
 
 static size_t bytes_used(const struct iio_buffer *buf)
@@ -30,7 +38,7 @@ static size_t bytes_used(const struct iio_buffer *buf)
 }
 
 
-static int demodulate(struct iio_buffer *buf)
+static int demodulate(struct iio_buffer *buf, pa_simple *pa)
 {
 	int new_min, new_max;
 	long i[3], q[3], di, dq;
@@ -40,7 +48,7 @@ static int demodulate(struct iio_buffer *buf)
 	unsigned int x = 0;
 	unsigned int n = 0;
 	short *sample_buffer, *buffer = iio_buffer_start(buf);
-	size_t offset, num_bytes = bytes_used(buf);
+	size_t num_bytes = bytes_used(buf);
 	int ret;
 
 	new_min = 0xfffffff;
@@ -104,26 +112,11 @@ static int demodulate(struct iio_buffer *buf)
 	if (n == 0)
 		return 0;
 
-	num_bytes = 2 * n;
-	offset = 0;
-
-	do {
-		ret = write(STDOUT_FILENO, sample_buffer + offset, num_bytes);
-		if (ret <= 0)
-			break;
-		num_bytes -= ret;
-		offset += ret;
-	} while (num_bytes);
-
+	ret = pa_simple_write(pa, sample_buffer, 2 * n, NULL);
 	free(sample_buffer);
 
-	if (ret == 0) {
-		fprintf(stderr, "Failed to write samples to stdout: EOF\n");
-		return -1;
-	}
-
-	if (ret == -1) {
-		perror("Failed to write samples to stdout");
+	if (ret < 0) {
+		perror("Failed to write samples to PulseAudio");
 		return -1;
 	}
 
@@ -158,6 +151,7 @@ int main(int argc, char *argv[])
 	struct iio_device *dev, *phy;
 	struct iio_channel *chn;
 	struct iio_buffer *buf;
+	pa_simple *pa;
 
 	setup_sigterm_handler();
 
@@ -169,8 +163,7 @@ int main(int argc, char *argv[])
 	phy = iio_context_find_device(ctx, "ad9361-phy");
 	if (!dev || !phy) {
 		fprintf(stderr, "Failed to find 'cf-ad9361-lpc' device\n");
-		iio_context_destroy(ctx);
-		return EXIT_FAILURE;
+		goto err_context_destroy;
 	}
 
 	/* Select I and Q data of the first channel */
@@ -200,21 +193,34 @@ int main(int argc, char *argv[])
 	buf = iio_device_create_buffer(dev, SAMPLES_COUNT, false);
 	if (!buf) {
 		perror("Unable to open device");
-		iio_context_destroy(ctx);
-		return EXIT_FAILURE;
+		goto err_context_destroy;
+	}
+
+	pa = pa_simple_new(NULL, "IIO FM Radio", PA_STREAM_PLAYBACK,
+			NULL, "playback", &sample_spec, NULL, NULL, NULL);
+	if (!pa) {
+		fprintf(stderr, "Unable to connect to PulseAudio\n");
+		goto err_buffer_destroy;
 	}
 
 	fprintf(stderr, "Starting FM modulation\n");
 
 	while (app_running) {
 		iio_buffer_refill(buf);
-		if (demodulate(buf))
+		if (demodulate(buf, pa))
 			break;
 	}
 
 	fprintf(stderr, "Stopping FM modulation\n");
 
+	pa_simple_free(pa);
 	iio_buffer_destroy(buf);
 	iio_context_destroy(ctx);
 	return EXIT_SUCCESS;
+
+err_buffer_destroy:
+	iio_buffer_destroy(buf);
+err_context_destroy:
+	iio_context_destroy(ctx);
+	return EXIT_FAILURE;
 }
