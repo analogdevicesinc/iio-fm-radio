@@ -150,7 +150,7 @@ static void setup_sigterm_handler(void)
 }
 
 /**
- * Usage: `iio_fm_radio [frequency] [hostname]`
+ * Usage: `iio_fm_radio [frequency]`
  */
 int main(int argc, char *argv[])
 {
@@ -161,11 +161,7 @@ int main(int argc, char *argv[])
 
 	setup_sigterm_handler();
 
-	if (argc > 2)
-		ctx = iio_create_network_context(argv[2]);
-	else
-		ctx = iio_create_local_context();
-
+	ctx = iio_create_default_context();
 	if (!ctx)
 		return EXIT_FAILURE;
 
@@ -201,7 +197,7 @@ int main(int argc, char *argv[])
 				"frequency", (long long) freq);
 	}
 
-	buf = iio_device_create_buffer(dev, SAMPLES_COUNT);
+	buf = iio_device_create_buffer(dev, SAMPLES_COUNT, false);
 	if (!buf) {
 		perror("Unable to open device");
 		iio_context_destroy(ctx);
