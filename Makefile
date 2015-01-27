@@ -11,3 +11,6 @@ iio-fm-radio: iio_fm_radio.c
 install:
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install ./iio-fm-radio $(DESTDIR)$(PREFIX)/bin/iio-fm-radio
+
+clean:
+	rm -f ./iio-fm-radio
