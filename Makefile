@@ -1,12 +1,13 @@
-DESTDIR=/usr/local
+PREFIX ?= /usr/local
+
 CFLAGS=-Wall -Werror -std=gnu99 -D_GNU_SOURCE -O2
 LDFLAGS=-liio -lpulse-simple
 
-all: iio_fm_radio
+all: iio-fm-radio
 
-iio_fm_radio: iio_fm_radio.c
+iio-fm-radio: iio_fm_radio.c
 	$(CC) $+ $(CFLAGS) $(LDFLAGS) -o $@
 
 install:
-	install -d $(DESTDIR)/bin
-	install ./iio_fm_radio $(DESTDIR)/bin/iio_fm_radio
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install ./iio-fm-radio $(DESTDIR)$(PREFIX)/bin/iio-fm-radio
