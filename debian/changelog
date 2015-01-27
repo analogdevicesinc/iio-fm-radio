@@ -1,0 +1,5 @@
+iio-fm-radio (1.0-0) unstable; urgency=low
+
+  * Initial release.
+
+ -- Paul Cercueil <paul.cercueil@analog.com>  Tue, 27 Jan 2014 11:04:34 +0200

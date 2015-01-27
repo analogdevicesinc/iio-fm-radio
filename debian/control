@@ -1,0 +1,15 @@
+Source: iio-fm-radio
+Section: sound
+Priority: optional
+Maintainer: Paul Cercueil <paul.cercueil@analog.com>
+Uploaders: Paul Cercueil <paul.cercueil@analog.com>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
+Homepage: http://github.com/analogdevicesinc/iio-fm-radio
+Vcs-Git: git://github.com/analogdevicesinc/iio-fm-radio
+
+Package: iio-fm-radio
+Architecture: any
+Multi-Arch: same
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: FM radio player for the AD-FMCOMMS2/3/4 hardware evaluation boards.
