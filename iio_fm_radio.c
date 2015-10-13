@@ -169,8 +169,14 @@ int main(int argc, char *argv[])
 	/* Select I and Q data of the first channel */
 	iio_channel_enable(iio_device_find_channel(dev, "voltage0", false));
 	iio_channel_enable(iio_device_find_channel(dev, "voltage1", false));
-	iio_channel_disable(iio_device_find_channel(dev, "voltage2", false));
-	iio_channel_disable(iio_device_find_channel(dev, "voltage3", false));
+
+	chn = iio_device_find_channel(dev, "voltage2", false);
+	if (chn)
+		iio_channel_disable(chn);
+
+	chn = iio_device_find_channel(dev, "voltage3", false);
+	if (chn)
+		iio_channel_disable(chn);
 
 	chn = iio_device_find_channel(phy, "voltage0", false);
 
