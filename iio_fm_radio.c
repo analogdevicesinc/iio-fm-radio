@@ -52,6 +52,8 @@ static struct block blocks[5];
 static int min = 0xfffffff;
 static int max = -0xfffffff;
 
+#define DECIMATION_FACTOR 32
+
 static int demodulate(struct iio_buffer_block *block)
 {
 	int new_min, new_max;
@@ -68,7 +70,7 @@ static int demodulate(struct iio_buffer_block *block)
 	new_min = 0xfffffff;
 	new_max = -0xfffffff;
 
-	sample_buffer = malloc(block->bytes_used / 64);
+	sample_buffer = malloc(block->bytes_used / DECIMATION_FACTOR / 2);
 
 	i[2] = blocks[block->id].addr[0];
 	q[2] = blocks[block->id].addr[1];
@@ -95,9 +97,9 @@ static int demodulate(struct iio_buffer_block *block)
 		q[1] = q[0];
 
 		x += sub;
-		if (x == 32) {
+		if (x == DECIMATION_FACTOR) {
 			x = 0;
-			sample /= (32 / sub);
+			sample /= (DECIMATION_FACTOR / sub);
 
 			if (sample < new_min)
 				new_min = sample;
