@@ -52,7 +52,8 @@ static struct block blocks[5];
 static int min = 0xfffffff;
 static int max = -0xfffffff;
 
-#define DECIMATION_FACTOR 32
+#define DECIMATION_FACTOR 48
+#define AUDIO_SAMPLE_RATE 48000
 
 static int demodulate(struct iio_buffer_block *block)
 {
@@ -97,7 +98,7 @@ static int demodulate(struct iio_buffer_block *block)
 		q[1] = q[0];
 
 		x += sub;
-		if (x == DECIMATION_FACTOR) {
+		if (x >= DECIMATION_FACTOR) {
 			x = 0;
 			sample /= (DECIMATION_FACTOR / sub);
 
@@ -173,6 +174,8 @@ static void setup_sigterm_handler(void)
 	sigaction(SIGPIPE, &action, NULL);
 }
 
+#define ALIGN(x, y) ((x) / (y)) * (y)
+
 /**
  * Usage: `iio_fm_radio [frequency]`
  */
@@ -180,13 +183,20 @@ int main(int argc, char *argv[])
 {
 	struct iio_buffer_block_alloc_req req;
 	struct iio_buffer_block block;
+	unsigned int sample_rate;
 	int fd, ret;
 	int i;
+
+	sample_rate = DECIMATION_FACTOR * AUDIO_SAMPLE_RATE;
+	if (sample_rate <= 2083333) {
+		fprintf(stderr, "Sample rate of %u is to low\n", sample_rate);
+		return EXIT_FAILURE;
+	}
 
 	setup_sigterm_handler();
 
 	req.type = 0x0;
-	req.size = 0x100000;
+	req.size = ALIGN(0x100000, sizeof(uint16_t) * 2 * DECIMATION_FACTOR);
 	req.count = 4;
 
 	ret = set_dev_paths("cf-ad9361-lpc");
@@ -209,8 +219,7 @@ int main(int argc, char *argv[])
 
 	/* Setup the phy */
 	set_dev_paths("ad9361-phy");
-	/* 32x oversampling for 48kHz audio */
-	write_devattr_int("in_voltage_sampling_frequency", 1536000);
+	write_devattr_int("in_voltage_sampling_frequency", sample_rate);
 	/* Set bandwidth to 300 kHz */
 	write_devattr_int("in_voltage_rf_bandwidth", 300000);
 
