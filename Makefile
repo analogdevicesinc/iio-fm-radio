@@ -10,3 +10,6 @@ install:
 	install -d $(DESTDIR)/bin
 	install ./iio_fm_radio $(DESTDIR)/bin/iio_fm_radio
 	install ./iio_fm_radio_play $(DESTDIR)/bin/iio_fm_radio_play
+	
+clean: 
+	rm -f iio_fm_radio
