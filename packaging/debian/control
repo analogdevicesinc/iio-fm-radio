@@ -1,0 +1,15 @@
+Source: iio-fm-radio
+Section: devel
+Priority: optional
+Maintainer: Engineerzone <https://ez.analog.com/sw-interface-tools>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.5.1
+Homepage: https://github.com/analogdevicesinc/iio-fm-radio
+Rules-Requires-Root: no
+
+Package: iio-fm-radio
+Architecture: @ARCHITECTURE@
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description:  Simple IIO FM Radio receive example
+ Documentation at https://wiki.analog.com/resources/tools-software/fm-radio
