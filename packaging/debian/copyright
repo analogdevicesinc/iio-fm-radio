@@ -1,0 +1,21 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: iio-fm-radio
+Upstream-Contact: Engineerzone <https://ez.analog.com/sw-interface-tools>
+Source: https://github.com/analogdevicesinc/iio-fm-radio
+#
+# Please double check copyright with the licensecheck(1) command.
+
+Files:     *
+Copyright: 2012-2013 Analog Devices, Inc.
+License:   GPL-2
+
+Files:     iio_utils.h
+Copyright: 2008 Jonathan Cameron
+License:   GPL-2
+
+License: GPL-2
+ Comment: This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
