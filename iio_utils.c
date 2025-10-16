@@ -416,7 +416,8 @@ int read_sysfs_string(const char *filename, const char *basedir, char **str)
 	if (ret < 0) {
 		if (NULL != *str)
 			free(*str);
-
+		fclose(sysfsfp);
+		goto error_free;
 	}
 	ret = strlen(*str);
 
