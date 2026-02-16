@@ -1,7 +1,7 @@
 #!/bin/bash
 
 version=$1
-architecture=$2
+architecture=$(dpkg --print-architecture)
 
 source_code=$(basename "$PWD")
 
@@ -14,8 +14,13 @@ sed -i "s/@ARCHITECTURE@/$architecture/" packaging/debian/control
 
 cp -r packaging/debian .
 
-pushd ..
-tar czf $source_code\_$version.orig.tar.gz $source_code
+rm -rf packaging
 
+pushd ..
+tar czf ${source_code}_${version}.orig.tar.gz \
+    --exclude='.git' \
+    --exclude='debian' \
+    $source_code
 popd
+
 debuild
