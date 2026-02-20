@@ -7,12 +7,13 @@ source_code=$(basename "$PWD")
 
 # Use sudo only if not running as root
 if [ "$(id -u)" -eq 0 ]; then
-    apt-get update
-    apt-get install -y build-essential make devscripts debhelper
+    SUDO=""
 else
-    sudo apt-get update
-    sudo apt-get install -y build-essential make devscripts debhelper
+    SUDO="sudo"
 fi
+
+$SUDO apt-get update
+$SUDO apt-get install -y build-essential make devscripts debhelper
 
 sed -i "s/@VERSION@/$version-1/" packaging/debian/changelog
 sed -i "s/@DATE@/$(date -R)/" packaging/debian/changelog
