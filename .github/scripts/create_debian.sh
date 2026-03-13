@@ -1,8 +1,6 @@
 #!/bin/bash
 
 version=$1
-architecture=$(dpkg --print-architecture)
-
 source_code=$(basename "$PWD")
 
 # Use sudo only if not running as root
@@ -17,7 +15,6 @@ $SUDO apt-get install -y build-essential make devscripts debhelper
 
 sed -i "s/@VERSION@/$version-1/" packaging/debian/changelog
 sed -i "s/@DATE@/$(date -R)/" packaging/debian/changelog
-sed -i "s/@ARCHITECTURE@/$architecture/" packaging/debian/control
 
 cp -r packaging/debian .
 
