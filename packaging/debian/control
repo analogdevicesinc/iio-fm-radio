@@ -8,7 +8,7 @@ Homepage: https://github.com/analogdevicesinc/iio-fm-radio
 Rules-Requires-Root: no
 
 Package: iio-fm-radio
-Architecture: @ARCHITECTURE@
+Architecture: any
 Multi-Arch: foreign
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description:  Simple IIO FM Radio receive example
