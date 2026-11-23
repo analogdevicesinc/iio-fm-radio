@@ -90,21 +90,25 @@ jobs:
             distro: kuiper
             architecture: arm64
             platform_flag: ""
+            suffixe-version: +Debian13
           - runner: ubuntu-24.04-arm
             docker_image: docker.cloudsmith.io/adi/containers/kuiper_basic_32@sha256:ce9c5eba9dc120595e42142665aa11ded7317181c01c14c190e86835cfef9c8a
             distro: kuiper
             architecture: armhf
             platform_flag: "--platform linux/arm/v7"
+            suffixe-version: +Debian13
           - runner: ubuntu-26.04-arm
-            docker_image: debian:latest
+            docker_image: debian:forky
             distro: debian
             architecture: arm64
             platform_flag: ""
+            suffixe-version: +Debian14
           - runner: ubuntu-26.04-arm
-            docker_image: debian:latest
+            docker_image: debian:forky
             distro: debian
             architecture: armhf
             platform_flag: "--platform linux/arm/v7"
+            suffixe-version: +Debian14
 
     steps:
     - name: Checkout code repository
@@ -176,9 +180,11 @@ jobs:
           - runner: ubuntu-26.04
             distro: ubuntu-26.04
             architecture: amd64
+            suffixe-version: +Ubuntu24
           - runner: ubuntu-24.04
             distro: ubuntu-24.04
             architecture: amd64
+            suffixe-version: +Ubuntu26
     env:
       architecture: ${{matrix.architecture}}
     defaults:
